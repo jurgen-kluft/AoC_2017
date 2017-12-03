@@ -47,23 +47,29 @@ func computeGotchaCode(filename string) (sum int, ok bool) {
 
 func computeGotchaCode2(filename string) (sum int, ok bool) {
 	sum = 0
+	var numbers []int
 	computator := func(line string) {
-		line += string(line[0])
-		// fmt.Printf("Line: %s \n", line)
-		var previousNumber = math.MaxInt32
-		var currentNumber = math.MaxInt32
 		for _, c := range line {
 			if c >= '0' && c <= '9' {
-				previousNumber = currentNumber
-				currentNumber = (int(c) - '0')
-				if previousNumber == currentNumber {
-					sum += currentNumber
-				}
+				n := (int(c) - '0')
+				numbers = append(numbers, n)
 			}
 		}
 	}
 
 	iterateOverLinesInTextFile(filename, computator)
+
+	shift := len(numbers) / 2
+	fmt.Printf("Count: %v, Shift %v \n", len(numbers), shift)
+
+	for i, n := range numbers {
+		n1 := n
+		n2 := numbers[(i+shift)%len(numbers)]
+		if n1 == n2 {
+			sum += n
+		}
+	}
+
 	ok = true
 	return
 }
