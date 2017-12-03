@@ -1,8 +1,9 @@
-package main
+package day1
 
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 )
 
@@ -21,19 +22,20 @@ func iterateOverLinesInTextFile(filename string, action func(string)) {
 	}
 }
 
-func toWhichFloorSantaGoes(filename string) (floor int, basement int, ok bool) {
-	floor = 0
-	basement = -1
+func computeGotchaCode(filename string) (sum int, ok bool) {
+	sum = 0
 	computator := func(line string) {
-		for pos, op := range line {
-			switch op {
-			case '(':
-				floor++
-			case ')':
-				floor--
-			}
-			if floor == -1 && basement == -1 {
-				basement = pos + 1
+		line += string(line[0])
+		// fmt.Printf("Line: %s \n", line)
+		var previousNumber = math.MaxInt32
+		var currentNumber = math.MaxInt32
+		for _, c := range line {
+			if c >= '0' && c <= '9' {
+				previousNumber = currentNumber
+				currentNumber = (int(c) - '0')
+				if previousNumber == currentNumber {
+					sum += currentNumber
+				}
 			}
 		}
 	}
@@ -43,11 +45,44 @@ func toWhichFloorSantaGoes(filename string) (floor int, basement int, ok bool) {
 	return
 }
 
-func main() {
-	var floor, basement, ok = toWhichFloorSantaGoes("input.text")
+func computeGotchaCode2(filename string) (sum int, ok bool) {
+	sum = 0
+	computator := func(line string) {
+		line += string(line[0])
+		// fmt.Printf("Line: %s \n", line)
+		var previousNumber = math.MaxInt32
+		var currentNumber = math.MaxInt32
+		for _, c := range line {
+			if c >= '0' && c <= '9' {
+				previousNumber = currentNumber
+				currentNumber = (int(c) - '0')
+				if previousNumber == currentNumber {
+					sum += currentNumber
+				}
+			}
+		}
+	}
+
+	iterateOverLinesInTextFile(filename, computator)
+	ok = true
+	return
+}
+
+// Run1 is the primary solution of
+func Run1() {
+	var sum, ok = computeGotchaCode("day1/input.text")
 	if ok {
-		fmt.Printf("Santa went to the %v floor\n", floor)
-		fmt.Printf("Santa first at the basement %v\n", basement)
+		fmt.Printf("Day 1.1: Sum is %v \n", sum)
+	} else {
+		fmt.Printf("Could not process the input")
+	}
+}
+
+// Run2 is the secondary solution
+func Run2() {
+	var sum, ok = computeGotchaCode2("day1/input.text")
+	if ok {
+		fmt.Printf("Day 1.2: Sum is %v \n", sum)
 	} else {
 		fmt.Printf("Could not process the input")
 	}

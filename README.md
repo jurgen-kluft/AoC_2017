@@ -1,3 +1,3 @@
 # AoC
-Advent of Code (December 2015) in Golang
-First time using Go
+Advent of Code (December 2017) in Golang
+
