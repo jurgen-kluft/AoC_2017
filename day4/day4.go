@@ -23,19 +23,22 @@ func iterateOverLinesInTextFile(filename string, action func(string)) {
 	}
 }
 
-func validatePassphrase(pp string) (ok bool) {
+func validatePassphrase(pp string, perms bool) (ok bool) {
 	words := strings.Split(pp, " ")
 	exists := map[string]bool{}
 	for _, word := range words {
-		perm, _ := permutation.NewPerm([]rune(word), nil)
-
 		has := false
-		for i, err := perm.Next(); err == nil; i, err = perm.Next() {
-			palin := string(i.([]rune))
-			if exists[palin] {
-				has = true
-				break
+		if perms {
+			perm, _ := permutation.NewPerm([]rune(word), nil)
+			for i, err := perm.Next(); err == nil; i, err = perm.Next() {
+				palin := string(i.([]rune))
+				if exists[palin] {
+					has = true
+					break
+				}
 			}
+		} else {
+			has = exists[word]
 		}
 		if !has {
 			exists[word] = true
@@ -46,11 +49,11 @@ func validatePassphrase(pp string) (ok bool) {
 	return true
 }
 
-func readValidPassphrases(filename string) (numberOfValidPassphrases int) {
+func readValidPassphrases(filename string, perms bool) (numberOfValidPassphrases int) {
 	numberOfValidPassphrases = 0
 
 	computator := func(passphrase string) {
-		ok := validatePassphrase(passphrase)
+		ok := validatePassphrase(passphrase, perms)
 		if ok {
 			numberOfValidPassphrases++
 		}
@@ -62,12 +65,12 @@ func readValidPassphrases(filename string) (numberOfValidPassphrases int) {
 
 // Run1 is the primary solution
 func Run1() {
-	var ok = readValidPassphrases("day4/input.text")
+	var ok = readValidPassphrases("day4/input.text", false)
 	fmt.Printf("Day 4.1: Valid passphrases are %v \n", ok)
 }
 
 // Run2 is the secondary solution
 func Run2() {
-	var ok = readValidPassphrases("day4/input.text")
+	var ok = readValidPassphrases("day4/input.text", true)
 	fmt.Printf("Day 4.2: Valid passphrases are %v \n", ok)
 }
