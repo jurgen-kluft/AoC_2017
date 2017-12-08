@@ -4,41 +4,32 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
-type Tower struct {
-	refcount int
-	weight   int
-	name     string
-	towers   []string
-	children []*Tower
-	parent   *Tower
-}
+const (
+	iCMPxL       = 0x0001
+	iCMPxLE      = 0x0002
+	iCMPxG       = 0x0003
+	iCMPxGE      = 0x0004
+	iCMPxE       = 0x0005
+	iCMPxNE      = 0x0006
+	iOPCODExCMPI = 0x10000
+	iOPCODExINCI = 0x20000
+	iOPCODExDECI = 0x40000
+)
 
-// Recursive function to get weight of a tower
-func (t *Tower) getWeight() int {
-	w := t.weight
-	for _, child := range t.children {
-		w += child.getWeight()
-	}
-	return w
-}
-
-func (t *Tower) print() {
-	if len(t.towers) > 0 {
-		fmt.Printf("Tower(%s) : weight(%d) -> ", t.name, t.weight)
-		for i, tower := range t.children {
-			if i == 0 {
-				fmt.Printf("%v(%d)", tower.name, tower.weight)
-			} else {
-				fmt.Printf(", %v(%d)", tower.name, tower.weight)
-			}
-		}
-	} else {
-		fmt.Printf("Tower(%s) : weight(%d)", t.name, t.weight)
-	}
-	fmt.Printf("\n")
+// ConditionalInstruction holds the details of
+//    [register 1] [INC|DEC OPCODE] [immediate value] if [register 2] [CMP OPCODE] [immediate value]
+//
+type ConditionalInstruction struct {
+	primReg    string
+	primOpcode int
+	primIVal   int
+	condReg    string
+	condCmp    int
+	condIVal   int
 }
 
 func iterateOverLinesInTextFile(filename string, action func(string)) {
@@ -56,109 +47,123 @@ func iterateOverLinesInTextFile(filename string, action func(string)) {
 	}
 }
 
-func decodeTower(line string) (t *Tower, ok bool) {
-	t = &Tower{}
-	t.refcount = 0
-	t.towers = []string{}
-	t.weight = 0
-	t.parent = nil
+func decodeConditionalInstruction(line string) (inst *ConditionalInstruction, ok bool) {
+	inst = &ConditionalInstruction{}
 
-	// parse tower
-	// example: ehsqyyb (174) -> xtcdt, tujcuy, wiqohmb, cxdwmu
-	result := strings.Split(line, "->")
-	fmt.Sscanf(result[0], "%s (%d)", &t.name, &t.weight)
+	// example:
+	//      fw dec -971 if fz < 1922
+	result := strings.Split(line, "if")
 
-	if len(result) > 1 {
-		//fmt.Printf("%s\n", result[1])
-		children := strings.Split(result[1], ",")
-		for _, child := range children {
-			child = strings.TrimSpace(child)
-			t.towers = append(t.towers, child)
-		}
+	args := strings.Split(result[0], " ")
+	if len(args) != 3 {
+		return nil, false
 	}
-	return t, true
+	if args[1] == "dec" {
+		inst.primOpcode = iOPCODExDECI
+	} else if args[1] == "inc" {
+		inst.primOpcode = iOPCODExINCI
+	} else {
+		return nil, false
+	}
+	s64, err := strconv.ParseInt(args[2], 10, 32)
+	if err != nil {
+		return nil, false
+	}
+	inst.primReg = args[0]
+	inst.primIVal = int(s64)
+
+	args = strings.Split(result[1], " ")
+	if len(args) != 3 {
+		return nil, false
+	}
+
+	if args[1] == "<" {
+		inst.condCmp = iCMPxL
+	} else if args[1] == ">" {
+		inst.condCmp = iCMPxG
+	} else if args[1] == "<=" {
+		inst.condCmp = iCMPxLE
+	} else if args[1] == ">=" {
+		inst.condCmp = iCMPxGE
+	} else if args[1] == "==" {
+		inst.condCmp = iCMPxE
+	} else if args[1] == "!=" {
+		inst.condCmp = iCMPxNE
+	} else {
+		return nil, false
+	}
+
+	s64, err = strconv.ParseInt(args[2], 10, 32)
+	if err != nil {
+		return nil, false
+	}
+	inst.condReg = args[0]
+	inst.condIVal = int(s64)
+
+	return inst, true
 }
 
-func readTowers(filename string) (towers map[string]*Tower) {
-	towers = map[string]*Tower{}
+func readInstructions(filename string) (instructions []*ConditionalInstruction) {
+	instructions = []*ConditionalInstruction{}
 
 	reader := func(line string) {
-		tower, ok := decodeTower(line)
+		inst, ok := decodeConditionalInstruction(line)
 		if ok {
 			//tower.print()
-			towers[tower.name] = tower
+			instructions = append(instructions, inst)
 		}
 	}
 	iterateOverLinesInTextFile(filename, reader)
-	return towers
+	return instructions
 }
 
-func findBottomTower(towers map[string]*Tower) (bottomName string) {
-	// Update ref-count and children array in every Tower
-	for _, tower := range towers {
-		for _, subName := range tower.towers {
-			subTower := towers[subName]
-			tower.children = append(tower.children, subTower)
-			subTower.refcount++
-			subTower.parent = tower
-		}
-	}
+// VCPU functions as a virtual CPU that can execute instructions and keep track
+// of registers and their content
+type VCPU struct {
+	registers map[string]int
+}
 
-	// Find the tower which is not referenced, this one should be
-	// the bottom tower
-	for _, tower := range towers {
-		if tower.refcount == 0 {
-			bottomName = tower.name
-		}
-	}
+func (cpu *VCPU) boot() {
+	cpu.registers = map[string]int{}
+	cpu.registers["a"] = 0
+}
 
-	for _, tower := range towers {
-		subWeights := map[int]int{}
-		for _, subName := range tower.towers {
-			subTower := towers[subName]
-			weight := subTower.getWeight()
-			weightCount, hasWeight := subWeights[weight]
-			if hasWeight {
-				subWeights[weight] = weightCount + 1
-			} else {
-				subWeights[weight] = 1
-			}
-		}
-
-		if len(subWeights) == 1 {
-			//fmt.Printf("program (%v) is balanced \n", tower.name)
-		} else if len(subWeights) == 2 {
-			fmt.Printf("Found a program (%v) with one unbalanced weight \n", tower.name)
-			tower.print()
-			for _, subName := range tower.towers {
-				subTower := towers[subName]
-				fmt.Printf("%d ", subTower.getWeight())
-			}
-			fmt.Printf("\n")
-		} else if len(subWeights) > 1 {
-			fmt.Printf("Found a sub program (%v) with unbalanced weights \n", tower.name)
-			tower.print()
-			for _, subName := range tower.towers {
-				subTower := towers[subName]
-				fmt.Printf("%d ", subTower.getWeight())
-			}
-			fmt.Printf("\n")
-		}
+func (cpu *VCPU) getRegister(reg string) int {
+	value, exists := cpu.registers[reg]
+	if !exists {
+		cpu.registers[reg] = 0
+		value = 0
 	}
+	return value
+}
+
+func (cpu *VCPU) execute(inst *ConditionalInstruction) {
 
 	return
 }
 
+func executeInstructions(instructions []*ConditionalInstruction) int {
+	// Keep track of the content of all our registers
+	cpu := &VCPU{}
+	cpu.boot()
+
+	for _, instruction := range instructions {
+		cpu.execute(instruction)
+	}
+
+	return 0
+}
+
 // Run1 is the primary solution
 func Run1() {
-	var towers = readTowers("day8/input.text")
-	name := findBottomTower(towers)
-	fmt.Printf("Day 8.1: Name of bottom tower: %v \n", name)
+	var instructions = readInstructions("day8/input.text")
+	largestValue := executeInstructions(instructions)
+	fmt.Printf("Day 8.1: Largest value in any register: %v \n", largestValue)
 }
 
 // Run2 is the secondary solution
 func Run2() {
-	var towers = readTowers("day8/input.text")
-	name := findBottomTower(towers)
-	fmt.Printf("Day 8.1: Name of bottom tower: %v \n", name)
+	var instructions = readInstructions("day8/input.text")
+	largestValue := executeInstructions(instructions)
+	fmt.Printf("Day 8.1: Largest value in any register: %v \n", largestValue)
 }
