@@ -160,5 +160,5 @@ func Run1() {
 func Run2() {
 	var towers = readTowers("day7/input.text")
 	name := findBottomTower(towers)
-	fmt.Printf("Day 7.1: Name of bottom tower: %v \n", name)
+	fmt.Printf("Day 7.2: Name of bottom tower: %v \n", name)
 }

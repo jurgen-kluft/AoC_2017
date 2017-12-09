@@ -32,6 +32,42 @@ type ConditionalInstruction struct {
 	condIVal   int
 }
 
+func (inst *ConditionalInstruction) print() {
+	cmpstr := ""
+	switch inst.condCmp {
+	case iOPCODExCMPI | iCMPxL:
+		cmpstr = "<"
+		break
+	case iOPCODExCMPI | iCMPxLE:
+		cmpstr = "<="
+		break
+	case iOPCODExCMPI | iCMPxG:
+		cmpstr = ">"
+		break
+	case iOPCODExCMPI | iCMPxGE:
+		cmpstr = ">="
+		break
+	case iOPCODExCMPI | iCMPxE:
+		cmpstr = "=="
+		break
+	case iOPCODExCMPI | iCMPxNE:
+		cmpstr = "!="
+		break
+	}
+
+	primOpcode := ""
+	switch inst.primOpcode {
+	case iOPCODExDECI:
+		primOpcode = "dec"
+		break
+	case iOPCODExINCI:
+		primOpcode = "inc"
+		break
+	}
+	fmt.Printf("%s %s %d ", inst.primReg, primOpcode, inst.primIVal)
+	fmt.Printf("if %s %s %d \n", inst.condReg, cmpstr, inst.condIVal)
+}
+
 func iterateOverLinesInTextFile(filename string, action func(string)) {
 	// Open the file.
 	f, _ := os.Open(filename)
@@ -53,6 +89,13 @@ func decodeConditionalInstruction(line string) (inst *ConditionalInstruction, ok
 	// example:
 	//      fw dec -971 if fz < 1922
 	result := strings.Split(line, "if")
+	if len(result) != 2 {
+		return nil, false
+	}
+
+	// Trim leading and trailing white space
+	result[0] = strings.TrimSpace(result[0])
+	result[1] = strings.TrimSpace(result[1])
 
 	args := strings.Split(result[0], " ")
 	if len(args) != 3 {
@@ -78,17 +121,17 @@ func decodeConditionalInstruction(line string) (inst *ConditionalInstruction, ok
 	}
 
 	if args[1] == "<" {
-		inst.condCmp = iCMPxL
+		inst.condCmp = iOPCODExCMPI | iCMPxL
 	} else if args[1] == ">" {
-		inst.condCmp = iCMPxG
+		inst.condCmp = iOPCODExCMPI | iCMPxG
 	} else if args[1] == "<=" {
-		inst.condCmp = iCMPxLE
+		inst.condCmp = iOPCODExCMPI | iCMPxLE
 	} else if args[1] == ">=" {
-		inst.condCmp = iCMPxGE
+		inst.condCmp = iOPCODExCMPI | iCMPxGE
 	} else if args[1] == "==" {
-		inst.condCmp = iCMPxE
+		inst.condCmp = iOPCODExCMPI | iCMPxE
 	} else if args[1] == "!=" {
-		inst.condCmp = iCMPxNE
+		inst.condCmp = iOPCODExCMPI | iCMPxNE
 	} else {
 		return nil, false
 	}
@@ -109,7 +152,6 @@ func readInstructions(filename string) (instructions []*ConditionalInstruction) 
 	reader := func(line string) {
 		inst, ok := decodeConditionalInstruction(line)
 		if ok {
-			//tower.print()
 			instructions = append(instructions, inst)
 		}
 	}
@@ -120,12 +162,14 @@ func readInstructions(filename string) (instructions []*ConditionalInstruction) 
 // VCPU functions as a virtual CPU that can execute instructions and keep track
 // of registers and their content
 type VCPU struct {
-	registers map[string]int
+	registers    map[string]int
+	highestValue int
 }
 
 func (cpu *VCPU) boot() {
 	cpu.registers = map[string]int{}
 	cpu.registers["a"] = 0
+	cpu.highestValue = 0
 }
 
 func (cpu *VCPU) getRegister(reg string) int {
@@ -133,16 +177,57 @@ func (cpu *VCPU) getRegister(reg string) int {
 	if !exists {
 		cpu.registers[reg] = 0
 		value = 0
+	} else {
+		if value > cpu.highestValue {
+			cpu.highestValue = value
+		}
 	}
 	return value
 }
 
-func (cpu *VCPU) execute(inst *ConditionalInstruction) {
+func (cpu *VCPU) setRegister(reg string, value int) {
+	cpu.registers[reg] = value
+}
 
+func (cpu *VCPU) execute(inst *ConditionalInstruction) {
+	condReg := cpu.getRegister(inst.condReg)
+	condFlag := false
+	switch inst.condCmp {
+	case iOPCODExCMPI | iCMPxL:
+		condFlag = condReg < inst.condIVal
+		break
+	case iOPCODExCMPI | iCMPxLE:
+		condFlag = condReg <= inst.condIVal
+		break
+	case iOPCODExCMPI | iCMPxG:
+		condFlag = condReg > inst.condIVal
+		break
+	case iOPCODExCMPI | iCMPxGE:
+		condFlag = condReg >= inst.condIVal
+		break
+	case iOPCODExCMPI | iCMPxE:
+		condFlag = condReg == inst.condIVal
+		break
+	case iOPCODExCMPI | iCMPxNE:
+		condFlag = condReg != inst.condIVal
+		break
+	}
+	if condFlag {
+		primRegValue := cpu.getRegister(inst.primReg)
+		switch inst.primOpcode {
+		case iOPCODExDECI:
+			primRegValue -= inst.primIVal
+			break
+		case iOPCODExINCI:
+			primRegValue += inst.primIVal
+			break
+		}
+		cpu.setRegister(inst.primReg, primRegValue)
+	}
 	return
 }
 
-func executeInstructions(instructions []*ConditionalInstruction) int {
+func executeInstructions(instructions []*ConditionalInstruction) (largest int, highest int) {
 	// Keep track of the content of all our registers
 	cpu := &VCPU{}
 	cpu.boot()
@@ -151,19 +236,32 @@ func executeInstructions(instructions []*ConditionalInstruction) int {
 		cpu.execute(instruction)
 	}
 
-	return 0
+	maxValue := 0
+	for _, value := range cpu.registers {
+		if value > maxValue {
+			maxValue = value
+		}
+	}
+	return maxValue, cpu.highestValue
+}
+
+func printInstructions(instructions []*ConditionalInstruction) {
+	for _, instruction := range instructions {
+		instruction.print()
+	}
 }
 
 // Run1 is the primary solution
 func Run1() {
 	var instructions = readInstructions("day8/input.text")
-	largestValue := executeInstructions(instructions)
+	//printInstructions(instructions)
+	largestValue, _ := executeInstructions(instructions)
 	fmt.Printf("Day 8.1: Largest value in any register: %v \n", largestValue)
 }
 
 // Run2 is the secondary solution
 func Run2() {
 	var instructions = readInstructions("day8/input.text")
-	largestValue := executeInstructions(instructions)
-	fmt.Printf("Day 8.1: Largest value in any register: %v \n", largestValue)
+	_, highestValue := executeInstructions(instructions)
+	fmt.Printf("Day 8.2: Highest value in any register at any time: %v \n", highestValue)
 }
