@@ -11,7 +11,11 @@ import "fmt"
 //import "github.com/jurgen-kluft/AoC_2017/day7"
 //import "github.com/jurgen-kluft/AoC_2017/day8"
 //import "github.com/jurgen-kluft/AoC_2017/day9"
-import "github.com/jurgen-kluft/AoC_2017/day10"
+//import "github.com/jurgen-kluft/AoC_2017/day10"
+//import "github.com/jurgen-kluft/AoC_2017/day11"
+//import "github.com/jurgen-kluft/AoC_2017/day12"
+//import "github.com/jurgen-kluft/AoC_2017/day13"
+import "github.com/jurgen-kluft/AoC_2017/day14"
 
 func main() {
 	fmt.Printf("Advent of Code - 2017.\n")
@@ -42,6 +46,18 @@ func main() {
 	//day9.Run1()
 	//day9.Run2()
 
-	day10.Run1()
-	day10.Run2()
+	//day10.Run1()
+	//day10.Run2()
+
+	//day11.Run1()
+	//day11.Run2()
+
+	//day12.Run1()
+	//day12.Run2()
+
+	//day13.Run1()
+	//day13.Run2()
+
+	day14.Run1()
+	day14.Run2()
 }
