@@ -55,6 +55,7 @@ func read(filename string) *Solution {
 
 // Run1 is the primary solution
 func Run1() {
+
 	var s = read(Day + "/input.text")
 	var result = s.solve()
 	fmt.Printf(Day+".1: . : %v \n", result)
