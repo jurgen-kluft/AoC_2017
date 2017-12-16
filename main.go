@@ -19,6 +19,11 @@ import "github.com/jurgen-kluft/AoC_2017/day12"
 import "github.com/jurgen-kluft/AoC_2017/day13"
 import "github.com/jurgen-kluft/AoC_2017/day14"
 import "github.com/jurgen-kluft/AoC_2017/day15"
+import "github.com/jurgen-kluft/AoC_2017/day16"
+import "github.com/jurgen-kluft/AoC_2017/day17"
+import "github.com/jurgen-kluft/AoC_2017/day18"
+import "github.com/jurgen-kluft/AoC_2017/day19"
+import "github.com/jurgen-kluft/AoC_2017/day20"
 
 func day(d int) {
 	download.GetInputForDay(d)
@@ -84,10 +89,30 @@ func day(d int) {
 		day15.Run1()
 		day15.Run2()
 		break
+	case 16:
+		day16.Run1(day)
+		day16.Run2(day)
+		break
+	case 17:
+		day17.Run1(day)
+		day17.Run2(day)
+		break
+	case 18:
+		day18.Run1(day)
+		day18.Run2(day)
+		break
+	case 19:
+		day19.Run1(day)
+		day19.Run2(day)
+		break
+	case 20:
+		day20.Run1(day)
+		day20.Run2(day)
+		break
 	}
 }
 
 func main() {
 	fmt.Printf("Advent of Code - 2017.\n")
-	day(15)
+	day(16)
 }
