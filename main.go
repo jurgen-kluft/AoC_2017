@@ -25,10 +25,10 @@ import "github.com/jurgen-kluft/AoC_2017/day18"
 import "github.com/jurgen-kluft/AoC_2017/day19"
 import "github.com/jurgen-kluft/AoC_2017/day20"
 
-func day(d int) {
-	download.GetInputForDay(d)
+func day(day int) {
+	download.GetInputForDay(day)
 
-	switch d {
+	switch day {
 	case 1:
 		day1.Run1()
 		day1.Run2()

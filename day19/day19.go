@@ -61,5 +61,5 @@ func Run1(day int) {
 func Run2(day int) {
 	var s = read(fmt.Sprintf("Day%d/input.text", day))
 	var result = s.solve2()
-	fmt.Printf("Day%d.1: . : %v \n", day, result)
+	fmt.Printf("Day%d.2: . : %v \n", day, result)
 }
