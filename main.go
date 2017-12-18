@@ -114,5 +114,5 @@ func day(day int) {
 
 func main() {
 	fmt.Printf("Advent of Code - 2017.\n")
-	day(16)
+	day(18)
 }

@@ -218,7 +218,6 @@ func (s *Solution) solve2() int {
 			fmt.Printf("Had a previous order at iteration %d, %d\n", iter, iterations)
 			break
 		} else {
-			fmt.Println(order)
 			orders[iterations] = order
 			history[order] = iterations
 		}
@@ -227,7 +226,7 @@ func (s *Solution) solve2() int {
 
 	rest := int64(1000*1000*1000) % 60
 
-	fmt.Println(orders[rest])
+	fmt.Println(orders[rest-1])
 
 	return 0
 }
