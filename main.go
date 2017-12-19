@@ -24,6 +24,11 @@ import "github.com/jurgen-kluft/AoC_2017/day17"
 import "github.com/jurgen-kluft/AoC_2017/day18"
 import "github.com/jurgen-kluft/AoC_2017/day19"
 import "github.com/jurgen-kluft/AoC_2017/day20"
+import "github.com/jurgen-kluft/AoC_2017/day21"
+import "github.com/jurgen-kluft/AoC_2017/day22"
+import "github.com/jurgen-kluft/AoC_2017/day23"
+import "github.com/jurgen-kluft/AoC_2017/day24"
+import "github.com/jurgen-kluft/AoC_2017/day25"
 
 func day(day int) {
 	download.GetInputForDay(day)
@@ -108,6 +113,26 @@ func day(day int) {
 	case 20:
 		day20.Run1(day)
 		day20.Run2(day)
+		break
+	case 21:
+		day21.Run1(day)
+		day21.Run2(day)
+		break
+	case 22:
+		day22.Run1(day)
+		day22.Run2(day)
+		break
+	case 23:
+		day23.Run1(day)
+		day23.Run2(day)
+		break
+	case 24:
+		day24.Run1(day)
+		day24.Run2(day)
+		break
+	case 25:
+		day25.Run1(day)
+		day25.Run2(day)
 		break
 	}
 }
