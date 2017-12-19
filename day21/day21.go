@@ -1,4 +1,4 @@
-package day20
+package day21
 
 import (
 	"bufio"
