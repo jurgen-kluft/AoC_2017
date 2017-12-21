@@ -3,11 +3,22 @@ package day21
 import (
 	"bufio"
 	"fmt"
-	"math/bits"
 	"os"
 	//"strconv"
 	//"strings"
 )
+
+func onesCount(v uint) int {
+	cnt := 0
+	bit := uint(1)
+	for bit <= 0x80000000 {
+		if (v & bit) == bit {
+			cnt++
+		}
+		bit = bit << 1
+	}
+	return cnt
+}
 
 func iterateOverLinesInTextFile(filename string, action func(string)) {
 	// Open the file.
@@ -81,6 +92,7 @@ func read(filename string) *Solution {
 	reader := func(line string) {
 		src, dst := readLine(line, s)
 		s.transforms[src] = dst
+		//printTransform(src, dst)
 	}
 	iterateOverLinesInTextFile(filename, reader)
 
@@ -89,38 +101,38 @@ func read(filename string) *Solution {
 }
 
 // 2x2, 4 bits pattern:
-//    3 2
-//    1 0
+//    3 2 -> 1 3
+//    1 0    0 2
 func rotate2x2(grid uint) uint {
 	rot := uint(0)
 	pat := (grid & 0xF0) >> 4
-	rot = rot | ((pat & (1 << 1)) << 2) // bit 3 = bit 1
-	rot = rot | ((pat & (1 << 3)) >> 1) // bit 2 = bit 3
-	rot = rot | ((pat & (1 << 0)) << 1) // bit 1 = bit 0
-	rot = rot | ((pat & (1 << 2)) >> 2) // bit 0 = bit 2
-	if bits.OnesCount(pat) != bits.OnesCount(rot) {
+	rot |= ((pat & (1 << 1)) << 2) // bit 3 = bit 1
+	rot |= ((pat & (1 << 3)) >> 1) // bit 2 = bit 3
+	rot |= ((pat & (1 << 0)) << 1) // bit 1 = bit 0
+	rot |= ((pat & (1 << 2)) >> 2) // bit 0 = bit 2
+	if onesCount(pat) != onesCount(rot) {
 		fmt.Println("Error, rotate2x2 bug")
 	}
 	return (rot << 4) | 2
 }
 
 // 3x3, 9 bits pattern:
-//    8 7 6
-//    5 4 3
-//    2 1 0
+//    8 7 6    5 8 7
+//    5 4 3 -> 2 4 6
+//    2 1 0    1 0 3
 func rotate3x3(grid uint) uint {
-	pat := (grid & 0xFFF0) >> 4
+	pat := (grid & 0x1FF0) >> 4
 	rot := uint(0)
-	rot = rot | ((pat & (1 << 5)) << 3) // bit 8 = bit 5
-	rot = rot | ((pat & (1 << 8)) >> 1) // bit 7 = bit 8
-	rot = rot | ((pat & (1 << 7)) >> 1) // bit 6 = bit 7
-	rot = rot | ((pat & (1 << 2)) << 3) // bit 5 = bit 2
-	rot = rot | (pat & (1 << 4))        // bit 4
-	rot = rot | ((pat & (1 << 6)) >> 3) // bit 3 = bit 6
-	rot = rot | ((pat & (1 << 1)) << 1) // bit 2 = bit 1
-	rot = rot | ((pat & (1 << 0)) << 1) // bit 1 = bit 0
-	rot = rot | ((pat & (1 << 3)) >> 3) // bit 0 = bit 3
-	if bits.OnesCount(pat) != bits.OnesCount(rot) {
+	rot |= ((pat & (1 << 5)) << 3) // bit 8 = bit 5
+	rot |= ((pat & (1 << 8)) >> 1) // bit 7 = bit 8
+	rot |= ((pat & (1 << 7)) >> 1) // bit 6 = bit 7
+	rot |= ((pat & (1 << 2)) << 3) // bit 5 = bit 2
+	rot |= (pat & (1 << 4))        // bit 4
+	rot |= ((pat & (1 << 6)) >> 3) // bit 3 = bit 6
+	rot |= ((pat & (1 << 1)) << 1) // bit 2 = bit 1
+	rot |= ((pat & (1 << 0)) << 1) // bit 1 = bit 0
+	rot |= ((pat & (1 << 3)) >> 3) // bit 0 = bit 3
+	if onesCount(pat) != onesCount(rot) {
 		fmt.Println("Error, rotate3x3 bug")
 	}
 	return (rot << 4) | 3
@@ -129,13 +141,18 @@ func rotate3x3(grid uint) uint {
 func flipPattern(pattern uint) uint {
 	size := pattern & 0xF
 	if size == 2 {
+		// 3 2     1 0
+		// 1 0  -> 3 2
 		flipped := (pattern & uint(0x30)) << 2
-		flipped = flipped | (pattern&uint(0xC0))>>2
+		flipped |= ((pattern & uint(0x30<<2)) >> 2)
 		return flipped | size
 	} else if size == 3 {
+		// 8 7 6    2 1 0
+		// 5 4 3 -> 5 4 3
+		// 2 1 0    8 7 6
 		flipped := (pattern & uint(0x0070)) << 6
-		flipped = flipped | (pattern&uint(0x1C00))>>6
-		flipped = flipped | (pattern & uint(0x0380))
+		flipped |= (pattern & uint(0x0070<<3))
+		flipped |= ((pattern & uint(0x0070<<6)) >> 6)
 		return flipped | size
 	}
 	return pattern
@@ -161,7 +178,20 @@ func printPattern(p uint) {
 			fmt.Print("/")
 		}
 	}
+}
 
+func printTransform(key uint, value uint) {
+	if key&0xF == 2 {
+		printPattern(key)
+		fmt.Print(" => ")
+		printPattern(value)
+		fmt.Println()
+	} else if key&0xF == 3 {
+		printPattern(key)
+		fmt.Print(" => ")
+		printPattern(value)
+		fmt.Println()
+	}
 }
 
 func (s *Solution) printTransforms() {
@@ -183,55 +213,42 @@ func (s *Solution) printTransforms() {
 	}
 }
 
-func (s *Solution) addTransform(key uint, value uint) {
-	if _, ok := s.transforms[key]; !ok {
-		s.transforms[key] = value
-	}
-}
-
 func (s *Solution) findTransform(key uint) uint {
-	i := 0
-	for i < 2 {
-		// Rotate
-		size := key & 0xF
+	// Rotate
+	size := key & 0xF
+	if size == 2 {
 		r := uint(0)
-		nr := uint(size*size) - 1
+		nr := uint(4)
 		kr := key
-		for r <= nr {
-			if size == 2 {
-				if rotated, ok := s.transforms[kr]; ok {
-					return rotated
-				}
-				kr = rotate2x2(kr)
-			} else if size == 3 {
-				if rotated, ok := s.transforms[kr]; ok {
-					return rotated
-				}
-				kr = rotate3x3(kr)
+		for r < nr {
+			if kt, ok := s.transforms[kr]; ok {
+				return kt
 			}
+			if kt, ok := s.transforms[flipPattern(kr)]; ok {
+				return kt
+			}
+			kr = rotate2x2(kr)
 			r++
 		}
-
-		// Flip
-		key = flipPattern(key)
-		i++
+	} else if size == 3 {
+		r := uint(0)
+		nr := uint(4)
+		kr := key
+		for r < nr {
+			if kt, ok := s.transforms[kr]; ok {
+				return kt
+			}
+			if kt, ok := s.transforms[flipPattern(kr)]; ok {
+				return kt
+			}
+			kr = rotate3x3(kr)
+			kr = rotate3x3(kr)
+			r++
+		}
 	}
 
 	fmt.Println("Encountered a pattern without a transform")
 	return key
-}
-
-func splitPattern4x4(pattern uint) (uint, uint, uint, uint) {
-	pattern = pattern >> 4
-	p1 := pattern & uint(0xCC00)
-	p2 := pattern & uint(0x3300)
-	p3 := pattern & uint(0x00CC)
-	p4 := pattern & uint(0x0033)
-	p1 = (p1 << 4) | 2
-	p2 = (p2 << 4) | 2
-	p3 = (p3 << 4) | 2
-	p4 = (p4 << 4) | 2
-	return p1, p2, p3, p4
 }
 
 // Solution is the primary object used to solve the puzzle
@@ -239,8 +256,7 @@ type Solution struct {
 	transforms map[uint]uint // first 4 bits is size, then size 2 = (4 bits) / size 3 = (9 bits) / size 4 = (16 bits)
 }
 
-func pixelsToPattern(posx int, posy int, width int, pixels [][]byte) (pattern uint) {
-	ps := width
+func (pixels *Pixels) toPattern(posx int, posy int, ps int) (pattern uint) {
 	pbit := uint(1 << uint((ps*ps)-1))
 	pattern = 0
 
@@ -248,7 +264,7 @@ func pixelsToPattern(posx int, posy int, width int, pixels [][]byte) (pattern ui
 	for y < ps {
 		x := 0
 		for x < ps {
-			if pixels[posy+y][posx+x] == 1 {
+			if pixels.pixels[posy+y][posx+x] != 0 {
 				pattern = pattern | pbit
 			}
 			pbit = pbit >> 1
@@ -256,78 +272,100 @@ func pixelsToPattern(posx int, posy int, width int, pixels [][]byte) (pattern ui
 		}
 		y++
 	}
-	return (pattern << 4) | uint(width)
+	return (pattern << 4) | uint(ps)
 }
 
-func convertPixelsToPatterns(pixels [][]byte) (patterns [][]uint) {
-	w := len(pixels[0])
-	pw := 0
+func (pixels *Pixels) convertToPatterns(patterns *Patterns) {
+	w := len(pixels.pixels[0])
+	dw := 3
 	if w%2 == 0 {
-		pw = w / 2
-	} else {
-		pw = w / 3
+		dw = 2
 	}
+	pw := w / dw
 
 	// Convert pixel image into pw x pw pattern image
-	patterns = make([][]uint, pw, pw)
-	for h := range patterns {
-		patterns[h] = make([]uint, pw, pw)
+	patterns.patterns = make([][]uint, pw, pw)
+	for h := range patterns.patterns {
+		patterns.patterns[h] = make([]uint, pw, pw)
 	}
 
 	y := 0
 	py := 0
-	for y < w {
+	for py < pw {
 		x := 0
 		px := 0
-		for x < w {
-			p := pixelsToPattern(x, y, w, pixels)
-			patterns[py][px] = p
-			x += w
+		for px < pw {
+			p := pixels.toPattern(x, y, dw)
+			patterns.patterns[py][px] = p
+			x += dw
 			px++
 		}
-		y += w
+		y += dw
 		py++
 	}
 
 	return
 }
 
-func patternToPixels(pattern uint, posx int, posy int, pixels [][]byte) {
-	ps := int(pattern & 0xF)
-	pattern = pattern >> 4
-	pbit := uint(1 << uint((ps*ps)-1))
+// Pixels is a byte based image, one pixel is one byte either '0' or '1'
+type Pixels struct {
+	pixels [][]byte
+}
+
+func (pixels *Pixels) countSetPixels() int {
+	pixelsSet := 0
+	for _, pp := range pixels.pixels {
+		for _, p := range pp {
+			if p != 0 {
+				pixelsSet++
+			}
+		}
+	}
+	return pixelsSet
+}
+
+func (pixels *Pixels) patternToPixels(pt uint, posx int, posy int) {
+	ps := int(pt & 0xF)
+	pt = pt >> 4
+	pb := uint(1 << uint((ps*ps)-1))
 
 	y := 0
 	for y < ps {
 		x := 0
 		for x < ps {
-			if pattern&pbit == 0 {
-				pixels[posy+y][posx+x] = 0
+			if (pt & pb) == pb {
+				pixels.pixels[posy+y][posx+x] = 0xFF
 			} else {
-				pixels[posy+y][posx+x] = 1
+				//pixels.pixels[posy+y][posx+x] = 0x00
 			}
+			pb = pb >> 1
 			x++
 		}
 		y++
 	}
 }
 
-func convertPatternsToPixels(patterns [][]uint) (pixels [][]byte) {
+// Patterns is the image split into patterns
+type Patterns struct {
+	patterns [][]uint
+}
+
+func (patterns *Patterns) convertToPixels(pixels *Pixels) {
 
 	// width/height in pixels
 	// allocate pixels
-	ps := int(patterns[0][0] & 0xF)
-	w := len(patterns) * ps
-	pixels = make([][]byte, w, w)
-	for h := range pixels {
-		pixels[h] = make([]byte, w, w)
+	ps := int(patterns.patterns[0][0] & 0xF)
+	w := len(patterns.patterns) * ps
+	pixels.pixels = make([][]byte, w, w)
+	for h := range pixels.pixels {
+		pixels.pixels[h] = make([]byte, w, w)
 	}
 
 	y := 0
-	for _, lp := range patterns {
+	for _, lp := range patterns.patterns {
 		x := 0
 		for _, p := range lp {
-			patternToPixels(p, x, y, pixels)
+			pixels.patternToPixels(p, x, y)
 			x += ps
 		}
 		y += ps
@@ -338,52 +376,98 @@ func convertPatternsToPixels(patterns [][]uint) (pixels [][]byte) {
 
 func (s *Solution) solve() int {
 	// Pattern we start with
-	patterns := [][]uint{}
+	patterns := &Patterns{}
+	patterns.patterns = [][]uint{}
 
 	// Start pattern (size = 3)
 	// [.#.]
 	// [..#]  -> 000(010)(001)(111) = 08F
 	// [###]
-	patterns = append(patterns, []uint{0x08F3})
-	pixels := convertPatternsToPixels(patterns)
+	patterns.patterns = append(patterns.patterns, []uint{0x08F3})
+
+	pixels := &Pixels{}
+	patterns.convertToPixels(pixels)
+	fmt.Printf("First image (%d,%d) has %d pixels set\n", len(pixels.pixels), len(pixels.pixels), pixels.countSetPixels())
 
 	iteration := 0
 	iterations := 5
 	for iteration < iterations {
 		// According to the 'size' rule, convert pixels to patterns
-		patterns = convertPixelsToPatterns(pixels)
+		pixels.convertToPatterns(patterns)
 
 		// Upscale all patterns
-		upscaledPatternImage := [][]uint{}
-		for _, pp := range patterns {
+		upscaledPattern := &Patterns{}
+		upscaledPattern.patterns = [][]uint{}
+		for _, pp := range patterns.patterns {
 			upscaledPatternLine := []uint{}
 			for _, p := range pp {
 				up := s.findTransform(p)
 				upscaledPatternLine = append(upscaledPatternLine, up)
 			}
-			upscaledPatternImage = append(upscaledPatternImage, upscaledPatternLine)
+			upscaledPattern.patterns = append(upscaledPattern.patterns, upscaledPatternLine)
 		}
 
 		// Convert patterns back to pixelized image
-		pixels = convertPatternsToPixels(patterns)
+		upscaledPattern.convertToPixels(pixels)
+		fmt.Printf("Iteration %d, image is (%d,%d), pixels set %d \n", iteration, len(pixels.pixels), len(pixels.pixels), pixels.countSetPixels())
 		iteration++
 	}
 
+	// Final image dimensions
+	fmt.Printf("Final image is (%d,%d)\n", len(pixels.pixels), len(pixels.pixels))
+
 	// Count the '1's
-	pixelsSet := 0
-	for _, pp := range pixels {
-		for _, p := range pp {
-			if p == 1 {
-				pixelsSet++
-			}
-		}
-	}
+	pixelsSet := pixels.countSetPixels()
 
 	return pixelsSet
 }
 
 func (s *Solution) solve2() int {
-	return 0
+	// Pattern we start with
+	patterns := &Patterns{}
+	patterns.patterns = [][]uint{}
+
+	// Start pattern (size = 3)
+	// [.#.]
+	// [..#]  -> 000(010)(001)(111) = 08F
+	// [###]
+	patterns.patterns = append(patterns.patterns, []uint{0x08F3})
+
+	pixels := &Pixels{}
+	patterns.convertToPixels(pixels)
+	fmt.Printf("First image (%d,%d) has %d pixels set\n", len(pixels.pixels), len(pixels.pixels), pixels.countSetPixels())
+
+	iteration := 0
+	iterations := 18
+	for iteration < iterations {
+		// According to the 'size' rule, convert pixels to patterns
+		pixels.convertToPatterns(patterns)
+
+		// Upscale all patterns
+		upscaledPattern := &Patterns{}
+		upscaledPattern.patterns = [][]uint{}
+		for _, pp := range patterns.patterns {
+			upscaledPatternLine := []uint{}
+			for _, p := range pp {
+				up := s.findTransform(p)
+				upscaledPatternLine = append(upscaledPatternLine, up)
+			}
+			upscaledPattern.patterns = append(upscaledPattern.patterns, upscaledPatternLine)
+		}
+
+		// Convert patterns back to pixelized image
+		upscaledPattern.convertToPixels(pixels)
+		fmt.Printf("Iteration %d, image is (%d,%d), pixels set %d \n", iteration, len(pixels.pixels), len(pixels.pixels), pixels.countSetPixels())
+		iteration++
+	}
+
+	// Final image dimensions
+	fmt.Printf("Final image is (%d,%d)\n", len(pixels.pixels), len(pixels.pixels))
+
+	// Count the '1's
+	pixelsSet := pixels.countSetPixels()
+
+	return pixelsSet
 }
 
 // Run1 is the primary solution
